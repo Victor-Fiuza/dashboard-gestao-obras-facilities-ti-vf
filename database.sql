@@ -1,7 +1,6 @@
 -- =====================================================
--- DASHBOARD ARENA BRB - SCRIPT DE BANCO DE DADOS
+-- DASHBOARD ARENA  - SCRIPT DE BANCO DE DADOS
 -- Execute este SQL no phpMyAdmin da Hostinger
--- Banco: u568843907_dashboard_aren
 -- =====================================================
 
 -- Remove tabelas existentes (se houver)
