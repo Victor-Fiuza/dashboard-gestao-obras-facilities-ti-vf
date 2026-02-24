@@ -1,6 +1,6 @@
-# 🏟️ Dashboard Arena BRB — Painel de Gestão da Diretoria
+# 🏟️ Dashboard Arena — Painel de Gestão da Diretoria
 
-Sistema web de gestão interna desenvolvido para a **Arena BRB**, projetado para exibição em TVs de 50 a 70 polegadas na sala da diretoria, com painel administrativo acessível de qualquer dispositivo.
+Sistema web de gestão interna desenvolvido para a **Arena**, projetado para exibição em TVs de 50 a 70 polegadas na sala da diretoria, com painel administrativo acessível de qualquer dispositivo.
 
 ---
 
@@ -208,4 +208,4 @@ O arquivo `api.php` expõe os seguintes endpoints:
 
 ## 📄 Licença
 
-Projeto interno — Arena BRB. Todos os direitos reservados.
+Projeto interno — Arena  . Todos os direitos reservados.
