@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard Arena </title>
+<title>Dashboard Arena BRB</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -97,7 +97,10 @@
 
   .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.8rem; }
 
-  .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 1.3rem 1.5rem; position: relative; overflow: hidden; }
+  .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 1.3rem 1.5rem; position: relative; overflow: hidden; cursor: pointer; transition: all 0.3s ease; }
+  .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+  .stat-card.stat-active { border-color: rgba(255,255,255,0.2); box-shadow: 0 0 20px rgba(255,255,255,0.05); }
+  .stat-card.stat-dimmed { opacity: 0.4; }
   .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 14px 14px 0 0; }
   .stat-card.green::before { background: var(--green); }
   .stat-card.yellow::before { background: var(--yellow); }
@@ -163,6 +166,23 @@
   .obra-detail-label { color: var(--text-muted); margin-bottom: 0.15rem; }
   .obra-detail-value { color: var(--text-primary); font-weight: 600; }
 
+  /* Cards de manutenção (visíveis apenas no mobile) */
+  .manut-cards-grid { display: none; grid-template-columns: 1fr; gap: 1rem; }
+  .manut-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 1.3rem; transition: all 0.3s ease; position: relative; overflow: hidden; }
+  .manut-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 16px 16px 0 0; }
+  .manut-card.card-bom::before { background: var(--green); }
+  .manut-card.card-atencao::before { background: var(--yellow); }
+  .manut-card.card-ruim::before { background: var(--red); }
+  .manut-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.8rem; }
+  .manut-card-system { display: flex; align-items: center; gap: 0.7rem; }
+  .manut-card-system .system-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+  .manut-card-name { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1rem; font-weight: 700; }
+  .manut-card-obs { font-size: 0.82rem; color: var(--text-secondary); margin: 0.6rem 0; line-height: 1.5; }
+  .manut-card-details { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid var(--border); }
+  .manut-card-detail { font-size: 0.78rem; }
+  .manut-card-detail-label { color: var(--text-muted); margin-bottom: 0.15rem; }
+  .manut-card-detail-value { color: var(--text-primary); font-weight: 600; }
+
   @media (max-width: 768px) {
     .header { padding: 1rem 1.2rem; }
     .main { padding: 1rem 1.2rem; }
@@ -172,6 +192,9 @@
     .stats-row { grid-template-columns: repeat(2, 1fr); }
     .header-title { font-size: 1.1rem; }
     .clock { font-size: 1.2rem; }
+    /* Manutenção: tabela vira cards no mobile */
+    .table-container { display: none; }
+    .manut-cards-grid { display: grid; }
   }
 
   @media (min-width: 1920px) {
@@ -212,8 +235,8 @@
   <div class="header-left">
     <div class="logo-icon">DC</div>
     <div>
-      <div class="header-title">Arena </div>
-      <div class="header-subtitle">PAINEL DE GESTÃO — DIRETORIA</div>
+      <div class="header-title">Arena</div>
+      <div class="header-subtitle">PAINEL DE GESTÃO</div>
     </div>
   </div>
   <div class="header-right">
@@ -245,6 +268,7 @@
         </table>
       </div>
     </div>
+    <div class="manut-cards-grid" id="manutCardsGrid"></div>
   </div>
 
   <div class="tab-content" id="tab-obras">
@@ -289,6 +313,13 @@ document.querySelectorAll('.tab').forEach(tab => {
 function formatDate(d) { if (!d) return '—'; const [y, m, day] = d.split('-'); return `${day}/${m}/${y}`; }
 function escapeHtml(str) { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
 
+let manutFilterStatus = null; // null = sem filtro, 'Bom'/'Atenção'/'Ruim' = filtrado
+
+function setManutFilter(status) {
+  manutFilterStatus = manutFilterStatus === status ? null : status;
+  renderManut();
+}
+
 function renderManut() {
   const tbody = document.getElementById('manutTableBody');
   const bom = manutencoes.filter(m => m.status === 'Bom').length;
@@ -297,11 +328,15 @@ function renderManut() {
   const badge = document.getElementById('badgeManut');
   badge.textContent = ruim; badge.style.display = ruim > 0 ? 'inline' : 'none';
 
+  const activeClass = s => manutFilterStatus === s ? 'stat-active' : (manutFilterStatus ? 'stat-dimmed' : '');
+
   document.getElementById('manutStats').innerHTML = `
-    <div class="stat-card blue"><div class="stat-label">Total Sistemas</div><div class="stat-value">${manutencoes.length}</div></div>
-    <div class="stat-card green"><div class="stat-label">Bom</div><div class="stat-value">${bom}</div></div>
-    <div class="stat-card yellow"><div class="stat-label">Atenção</div><div class="stat-value">${atencao}</div></div>
-    <div class="stat-card red"><div class="stat-label">Ruim</div><div class="stat-value">${ruim}</div></div>`;
+    <div class="stat-card blue ${manutFilterStatus ? 'stat-dimmed' : ''}" onclick="setManutFilter(null)"><div class="stat-label">Total Sistemas</div><div class="stat-value">${manutencoes.length}</div></div>
+    <div class="stat-card green ${activeClass('Bom')}" onclick="setManutFilter('Bom')"><div class="stat-label">Bom</div><div class="stat-value">${bom}</div></div>
+    <div class="stat-card yellow ${activeClass('Atenção')}" onclick="setManutFilter('Atenção')"><div class="stat-label">Atenção</div><div class="stat-value">${atencao}</div></div>
+    <div class="stat-card red ${activeClass('Ruim')}" onclick="setManutFilter('Ruim')"><div class="stat-label">Ruim</div><div class="stat-value">${ruim}</div></div>`;
+
+  const filtered = manutFilterStatus ? manutencoes.filter(m => m.status === manutFilterStatus) : manutencoes;
 
   const icons = {'Ar Condicionado':'❄️','Elevador':'🛗','Elétric':'⚡','Hidr':'💧','Gerador':'🔋','CFTV':'📹','Segurança':'📹','Incêndio':'🔥','Rede':'🌐','TI':'🌐'};
   const colors = {'Ar Condicionado':'#3b82f6','Elevador':'#a855f7','Elétric':'#eab308','Hidr':'#06b6d4','Gerador':'#22c55e','CFTV':'#f97316','Segurança':'#f97316','Incêndio':'#ef4444','Rede':'#8b5cf6','TI':'#8b5cf6'};
@@ -309,9 +344,9 @@ function renderManut() {
   const getColor = n => { for (const [k,v] of Object.entries(colors)) if (n.includes(k)) return v; return '#64748b'; };
   const statusClass = {'Bom':'status-bom','Atenção':'status-atencao','Ruim':'status-ruim'};
 
-  tbody.innerHTML = manutencoes.length === 0
+  tbody.innerHTML = filtered.length === 0
     ? '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-muted)">Nenhuma manutenção cadastrada</td></tr>'
-    : manutencoes.map(m => `<tr>
+    : filtered.map(m => `<tr>
         <td><div class="system-name"><div class="system-icon" style="background:${getColor(m.sistema)}22;color:${getColor(m.sistema)}">${getIcon(m.sistema)}</div>${escapeHtml(m.sistema)}</div></td>
         <td class="date-cell">${formatDate(m.ultima_manutencao)}</td>
         <td><span class="status-badge ${statusClass[m.status]||''}"><span class="status-dot"></span>${m.status}</span></td>
@@ -319,7 +354,34 @@ function renderManut() {
         <td class="date-cell">${formatDate(m.proxima_manutencao)}</td>
       </tr>`).join('');
 
+  // Cards para visualização mobile
+  const cardStatusClass = {'Bom':'card-bom','Atenção':'card-atencao','Ruim':'card-ruim'};
+  const cardsGrid = document.getElementById('manutCardsGrid');
+  cardsGrid.innerHTML = filtered.length === 0
+    ? '<div style="text-align:center;padding:2rem;color:var(--text-muted)">Nenhuma manutenção cadastrada</div>'
+    : filtered.map(m => `<div class="manut-card ${cardStatusClass[m.status]||''}">
+        <div class="manut-card-header">
+          <div class="manut-card-system">
+            <div class="system-icon" style="background:${getColor(m.sistema)}22;color:${getColor(m.sistema)}">${getIcon(m.sistema)}</div>
+            <div class="manut-card-name">${escapeHtml(m.sistema)}</div>
+          </div>
+          <span class="status-badge ${statusClass[m.status]||''}"><span class="status-dot"></span>${m.status}</span>
+        </div>
+        ${m.observacao?`<div class="manut-card-obs">💬 ${escapeHtml(m.observacao)}</div>`:''}
+        <div class="manut-card-details">
+          <div class="manut-card-detail"><div class="manut-card-detail-label">Última Manutenção</div><div class="manut-card-detail-value">${formatDate(m.ultima_manutencao)}</div></div>
+          <div class="manut-card-detail"><div class="manut-card-detail-label">Próxima Manutenção</div><div class="manut-card-detail-value">${formatDate(m.proxima_manutencao)}</div></div>
+        </div>
+      </div>`).join('');
+
   document.getElementById('lastUpdate').textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR')}`;
+}
+
+let obrasFilterStatus = null; // null = sem filtro, 'Concluída'/'Em Andamento'/'Planejamento'
+
+function setObrasFilter(status) {
+  obrasFilterStatus = obrasFilterStatus === status ? null : status;
+  renderObras();
 }
 
 function renderObras() {
@@ -329,18 +391,24 @@ function renderObras() {
   const emAndamento = obras.filter(o => !['Concluída','Planejamento'].includes(o.fase)).length;
   const planej = obras.filter(o => o.fase === 'Planejamento').length;
 
+  const activeClass = s => obrasFilterStatus === s ? 'stat-active' : (obrasFilterStatus ? 'stat-dimmed' : '');
+
   document.getElementById('obrasStats').innerHTML = `
-    <div class="stat-card blue"><div class="stat-label">Total Obras</div><div class="stat-value">${total}</div></div>
-    <div class="stat-card green"><div class="stat-label">Concluídas</div><div class="stat-value">${concluidas}</div></div>
-    <div class="stat-card yellow"><div class="stat-label">Em Andamento</div><div class="stat-value">${emAndamento}</div></div>
-    <div class="stat-card red"><div class="stat-label">Planejamento</div><div class="stat-value">${planej}</div></div>`;
+    <div class="stat-card blue ${obrasFilterStatus ? 'stat-dimmed' : ''}" onclick="setObrasFilter(null)"><div class="stat-label">Total Obras</div><div class="stat-value">${total}</div></div>
+    <div class="stat-card green ${activeClass('Concluída')}" onclick="setObrasFilter('Concluída')"><div class="stat-label">Concluídas</div><div class="stat-value">${concluidas}</div></div>
+    <div class="stat-card yellow ${activeClass('Em Andamento')}" onclick="setObrasFilter('Em Andamento')"><div class="stat-label">Em Andamento</div><div class="stat-value">${emAndamento}</div></div>
+    <div class="stat-card red ${activeClass('Planejamento')}" onclick="setObrasFilter('Planejamento')"><div class="stat-label">Planejamento</div><div class="stat-value">${planej}</div></div>`;
+
+  const filtered = obrasFilterStatus === null ? obras
+    : obrasFilterStatus === 'Em Andamento' ? obras.filter(o => !['Concluída','Planejamento'].includes(o.fase))
+    : obras.filter(o => o.fase === obrasFilterStatus);
 
   const phaseClass = {'Fundação':'phase-fundacao','Estrutura':'phase-estrutura','Acabamento':'phase-acabamento','Concluída':'phase-concluida','Planejamento':'phase-planejamento'};
   const pColor = p => p >= 80 ? 'var(--green)' : p >= 50 ? 'var(--accent)' : p >= 25 ? 'var(--yellow)' : 'var(--red)';
 
-  grid.innerHTML = obras.length === 0
+  grid.innerHTML = filtered.length === 0
     ? '<div style="text-align:center;padding:2rem;color:var(--text-muted)">Nenhuma obra cadastrada</div>'
-    : obras.map(o => `<div class="obra-card">
+    : filtered.map(o => `<div class="obra-card">
         <div class="obra-header"><div><div class="obra-name">${escapeHtml(o.nome)}</div><div class="obra-location">📍 ${escapeHtml(o.localizacao)||'Local não informado'}</div></div><span class="obra-phase-badge ${phaseClass[o.fase]||''}">${o.fase}</span></div>
         <div class="progress-section"><div class="progress-info"><span class="progress-label">Progresso Geral</span><span class="progress-value" style="color:${pColor(o.progresso)}">${o.progresso}%</span></div><div class="progress-bar"><div class="progress-fill" style="width:${o.progresso}%;background:${pColor(o.progresso)}"></div></div></div>
         ${o.observacao?`<div style="font-size:0.82rem;color:var(--text-secondary);margin-top:0.6rem;line-height:1.5;">💬 ${escapeHtml(o.observacao)}</div>`:''}
